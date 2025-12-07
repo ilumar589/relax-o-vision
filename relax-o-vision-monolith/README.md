@@ -1,6 +1,12 @@
-# Your awesome project
+# Relax-O-Vision
 
-Welcome to the yet another awesome project generated with the Gowebly CLI! 🎉
+Welcome to Relax-O-Vision - a comprehensive football data analytics platform with AI-powered predictions! 🎉
+
+## Quick Links
+
+- [Getting Started Guide](GETTING_STARTED.md) - Complete setup instructions for new developers
+- [Football Predictions](FOOTBALL_PREDICTIONS.md) - AI prediction features
+- [Implementation Summary](IMPLEMENTATION_SUMMARY.md) - Technical architecture details
 
 This README file contains all the necessary information about:
 

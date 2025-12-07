@@ -3,7 +3,7 @@ package footballdata
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -38,8 +38,8 @@ func (r *Repository) SaveCompetition(ctx context.Context, comp *Competition) err
 	}
 
 	query := `
-		INSERT INTO competitions (id, code, name, type, emblem, area, current_season, seasons, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO competitions (id, code, name, type, emblem, area, current_season, seasons, updated_at, cached_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE SET
 			code = EXCLUDED.code,
 			name = EXCLUDED.name,
@@ -48,9 +48,11 @@ func (r *Repository) SaveCompetition(ctx context.Context, comp *Competition) err
 			area = EXCLUDED.area,
 			current_season = EXCLUDED.current_season,
 			seasons = EXCLUDED.seasons,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			cached_at = EXCLUDED.cached_at
 	`
 
+	now := time.Now()
 	_, err = r.db.ExecContext(ctx, query,
 		comp.ID,
 		comp.Code,
@@ -60,7 +62,8 @@ func (r *Repository) SaveCompetition(ctx context.Context, comp *Competition) err
 		areaJSON,
 		currentSeasonJSON,
 		seasonsJSON,
-		time.Now(),
+		now,
+		now, // cached_at
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save competition: %w", err)
@@ -121,8 +124,8 @@ func (r *Repository) SaveTeam(ctx context.Context, team *Team) error {
 	}
 
 	query := `
-		INSERT INTO teams (id, name, short_name, tla, crest, address, website, founded, club_colors, venue, area, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO teams (id, name, short_name, tla, crest, address, website, founded, club_colors, venue, area, updated_at, cached_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			short_name = EXCLUDED.short_name,
@@ -134,9 +137,11 @@ func (r *Repository) SaveTeam(ctx context.Context, team *Team) error {
 			club_colors = EXCLUDED.club_colors,
 			venue = EXCLUDED.venue,
 			area = EXCLUDED.area,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			cached_at = EXCLUDED.cached_at
 	`
 
+	now := time.Now()
 	_, err = r.db.ExecContext(ctx, query,
 		team.ID,
 		team.Name,
@@ -149,7 +154,8 @@ func (r *Repository) SaveTeam(ctx context.Context, team *Team) error {
 		team.ClubColors,
 		team.Venue,
 		areaJSON,
-		time.Now(),
+		now,
+		now, // cached_at
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save team: %w", err)
@@ -217,8 +223,8 @@ func (r *Repository) SaveMatch(ctx context.Context, match *Match) error {
 	}
 
 	query := `
-		INSERT INTO matches (id, competition_id, season_id, matchday, status, utc_date, home_team, away_team, score, odds, referees, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO matches (id, competition_id, season_id, matchday, status, utc_date, home_team, away_team, score, odds, referees, updated_at, cached_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (id) DO UPDATE SET
 			competition_id = EXCLUDED.competition_id,
 			season_id = EXCLUDED.season_id,
@@ -230,9 +236,11 @@ func (r *Repository) SaveMatch(ctx context.Context, match *Match) error {
 			score = EXCLUDED.score,
 			odds = EXCLUDED.odds,
 			referees = EXCLUDED.referees,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			cached_at = EXCLUDED.cached_at
 	`
 
+	now := time.Now()
 	_, err = r.db.ExecContext(ctx, query,
 		match.ID,
 		match.Competition.ID,
@@ -245,7 +253,8 @@ func (r *Repository) SaveMatch(ctx context.Context, match *Match) error {
 		scoreJSON,
 		oddsJSON,
 		refereesJSON,
-		time.Now(),
+		now,
+		now, // cached_at
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save match: %w", err)

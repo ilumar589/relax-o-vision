@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -31,7 +32,12 @@ type CacheConfig struct {
 func NewCache(config CacheConfig) (Cache, error) {
 	switch config.Type {
 	case "redis":
-		return NewRedisCache(config.RedisAddr, config.RedisPassword, config.RedisDB)
+		// Parse Redis URL if it starts with redis://
+		addr := config.RedisAddr
+		if strings.HasPrefix(addr, "redis://") {
+			addr = strings.TrimPrefix(addr, "redis://")
+		}
+		return NewRedisCache(addr, config.RedisPassword, config.RedisDB)
 	case "memory":
 		return NewMemoryCache(config.MaxSize), nil
 	default:

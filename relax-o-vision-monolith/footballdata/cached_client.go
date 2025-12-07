@@ -2,7 +2,7 @@ package footballdata
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log/slog"
 	"time"
@@ -16,8 +16,8 @@ type CachedClient struct {
 	cache  cache.Cache
 }
 
-// CacheTTL defines cache TTL by data type
-var CacheTTL = map[string]time.Duration{
+// ShortCacheTTL defines cache TTL by data type for short-lived data
+var ShortCacheTTL = map[string]time.Duration{
 	"competitions": 24 * time.Hour,
 	"teams":        12 * time.Hour,
 	"matches":      5 * time.Minute, // Short TTL for live data
@@ -56,7 +56,7 @@ func (c *CachedClient) GetCompetition(ctx context.Context, code string) (*Compet
 
 	// Store in cache
 	if data, err := json.Marshal(comp); err == nil {
-		c.cache.Set(ctx, cacheKey, data, CacheTTL["competitions"])
+		c.cache.Set(ctx, cacheKey, data, ShortCacheTTL["competitions"])
 	}
 
 	return comp, nil
@@ -85,7 +85,7 @@ func (c *CachedClient) GetTeam(ctx context.Context, id int) (*Team, error) {
 
 	// Store in cache
 	if data, err := json.Marshal(team); err == nil {
-		c.cache.Set(ctx, cacheKey, data, CacheTTL["teams"])
+		c.cache.Set(ctx, cacheKey, data, ShortCacheTTL["teams"])
 	}
 
 	return team, nil
@@ -114,7 +114,7 @@ func (c *CachedClient) GetMatches(ctx context.Context, competitionCode string) (
 
 	// Store in cache
 	if data, err := json.Marshal(matches); err == nil {
-		c.cache.Set(ctx, cacheKey, data, CacheTTL["matches"])
+		c.cache.Set(ctx, cacheKey, data, ShortCacheTTL["matches"])
 	}
 
 	return matches, nil
@@ -143,7 +143,7 @@ func (c *CachedClient) GetStandings(ctx context.Context, competitionCode string)
 
 	// Store in cache
 	if data, err := json.Marshal(standing); err == nil {
-		c.cache.Set(ctx, cacheKey, data, CacheTTL["standings"])
+		c.cache.Set(ctx, cacheKey, data, ShortCacheTTL["standings"])
 	}
 
 	return standing, nil
