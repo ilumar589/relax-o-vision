@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/edd/relaxovisionmonolith/footballdata"
 	"github.com/edd/relaxovisionmonolith/predictions"
+	"github.com/edd/relaxovisionmonolith/websocket"
+	fiberws "github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
@@ -23,6 +24,8 @@ var (
 	footballService     *footballdata.Service
 	predictionsService  *predictions.Service
 	predictionsHandlers *predictions.Handlers
+	wsHub               *websocket.Hub
+	wsHandler           *websocket.Handler
 )
 
 // runServer runs a new HTTP server with the loaded environment variables.
@@ -44,6 +47,11 @@ func runServer() error {
 	// Initialize services
 	initServices()
 
+	// Initialize WebSocket hub
+	wsHub = websocket.NewHub()
+	wsHandler = websocket.NewHandler(wsHub)
+	go wsHub.Run()
+
 	// Validate environment variables.
 	port, err := strconv.Atoi(gowebly.Getenv("BACKEND_PORT", "7000"))
 	if err != nil {
@@ -51,15 +59,10 @@ func runServer() error {
 	}
 
 	// Create a new server instance with options from environment variables.
-	// For more information, see https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
-	// Note: The ReadTimeout and WriteTimeout settings may interfere with SSE (Server-Sent Event) or WS (WebSocket) connections.
-	// For SSE or WS, these timeouts can cause the connection to reset after 10 or 5 seconds due to the ReadTimeout and WriteTimeout settings.
-	// If you plan to use SSE or WS, consider commenting out or removing the ReadTimeout and WriteTimeout key-value pairs.
+	// Note: ReadTimeout and WriteTimeout are removed to support WebSocket connections
 	config := fiber.Config{
-		Views:        html.NewFileSystem(http.Dir("./templates"), ".html"),
-		ViewsLayout:  "main",
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Views:       html.NewFileSystem(http.Dir("./templates"), ".html"),
+		ViewsLayout: "main",
 	}
 
 	// Create a new Fiber server.
@@ -86,6 +89,15 @@ func runServer() error {
 	server.Post("/api/predictions", predictionsHandlers.CreatePrediction)
 	server.Get("/api/predictions/:id", predictionsHandlers.GetPrediction)
 	server.Get("/api/predictions/match/:matchId", predictionsHandlers.GetMatchPredictions)
+
+	// WebSocket endpoint
+	server.Use("/ws", func(c *fiber.Ctx) error {
+		if fiberws.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+	server.Get("/ws", fiberws.New(wsHandler.HandleConnection))
 
 	return server.Listen(fmt.Sprintf(":%d", port))
 }
