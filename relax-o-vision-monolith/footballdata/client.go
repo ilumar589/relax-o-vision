@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -17,9 +18,10 @@ const (
 
 // Client represents the football-data.org API client
 type Client struct {
-	apiKey     string
-	httpClient *http.Client
+	apiKey      string
+	httpClient  *http.Client
 	lastRequest time.Time
+	mu          sync.Mutex // Protects lastRequest
 }
 
 // NewClient creates a new football-data.org API client
@@ -36,14 +38,18 @@ func NewClient(apiKey string) *Client {
 // doRequest performs an HTTP request with rate limiting and authentication
 func (c *Client) doRequest(ctx context.Context, endpoint string) ([]byte, error) {
 	// Rate limiting - ensure we don't exceed 10 requests per minute
+	c.mu.Lock()
 	if !c.lastRequest.IsZero() {
 		elapsed := time.Since(c.lastRequest)
 		if elapsed < rateLimitDuration/requestsPerMinute {
 			sleepDuration := (rateLimitDuration / requestsPerMinute) - elapsed
+			c.mu.Unlock()
 			time.Sleep(sleepDuration)
+			c.mu.Lock()
 		}
 	}
 	c.lastRequest = time.Now()
+	c.mu.Unlock()
 
 	url := fmt.Sprintf("%s%s", baseURL, endpoint)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

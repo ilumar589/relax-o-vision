@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -186,6 +187,7 @@ func (s *Service) GetPredictionsByMatch(ctx context.Context, matchID int) ([]Pre
 		}
 
 		if err := json.Unmarshal(agentOutputsJSON, &prediction.AgentOutputs); err != nil {
+			slog.Error("Failed to unmarshal agent outputs", "predictionId", prediction.ID, "error", err)
 			continue
 		}
 
@@ -221,13 +223,23 @@ func (s *Service) fetchMatchAnalysis(ctx context.Context, matchID int) (*MatchAn
 		return nil, err
 	}
 
+	// Safely extract team IDs and names
+	homeID, homeIDOk := homeTeamData["id"].(float64)
+	homeName, homeNameOk := homeTeamData["name"].(string)
+	awayID, awayIDOk := awayTeamData["id"].(float64)
+	awayName, awayNameOk := awayTeamData["name"].(string)
+
+	if !homeIDOk || !homeNameOk || !awayIDOk || !awayNameOk {
+		return nil, fmt.Errorf("invalid team data structure")
+	}
+
 	// Build analysis structure (simplified version)
 	analysis := &MatchAnalysis{
 		MatchID:   matchID,
 		MatchDate: utcDate,
 		HomeTeam: TeamAnalysis{
-			ID:   int(homeTeamData["id"].(float64)),
-			Name: homeTeamData["name"].(string),
+			ID:   int(homeID),
+			Name: homeName,
 			Statistics: TeamStatistics{
 				MatchesPlayed: 10,
 				Wins:          5,
@@ -236,8 +248,8 @@ func (s *Service) fetchMatchAnalysis(ctx context.Context, matchID int) (*MatchAn
 			},
 		},
 		AwayTeam: TeamAnalysis{
-			ID:   int(awayTeamData["id"].(float64)),
-			Name: awayTeamData["name"].(string),
+			ID:   int(awayID),
+			Name: awayName,
 			Statistics: TeamStatistics{
 				MatchesPlayed: 10,
 				Wins:          4,

@@ -42,6 +42,17 @@ func initDatabase() (*sql.DB, error) {
 
 // runMigrations executes database migrations
 func runMigrations(db *sql.DB) error {
+	// Create migrations tracking table if it doesn't exist
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version VARCHAR(255) PRIMARY KEY,
+			applied_at TIMESTAMP DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create migrations table: %w", err)
+	}
+
 	migrations := []string{
 		"migrations/001_create_competitions.sql",
 		"migrations/002_create_teams.sql",
@@ -50,6 +61,18 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	for _, migration := range migrations {
+		// Check if migration already applied
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migration).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("failed to check migration status: %w", err)
+		}
+
+		if count > 0 {
+			slog.Info("Migration already applied, skipping", "file", migration)
+			continue
+		}
+
 		slog.Info("Running migration", "file", migration)
 		
 		content, err := os.ReadFile(migration)
@@ -61,6 +84,11 @@ func runMigrations(db *sql.DB) error {
 
 		if _, err := db.Exec(string(content)); err != nil {
 			return fmt.Errorf("failed to run migration %s: %w", migration, err)
+		}
+
+		// Mark migration as applied
+		if _, err := db.Exec("INSERT INTO schema_migrations (version) VALUES ($1)", migration); err != nil {
+			return fmt.Errorf("failed to record migration: %w", err)
 		}
 	}
 
