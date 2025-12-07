@@ -8,8 +8,11 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/edd/relaxovisionmonolith/cache"
+	"github.com/edd/relaxovisionmonolith/embeddings"
 	"github.com/edd/relaxovisionmonolith/footballdata"
 	"github.com/edd/relaxovisionmonolith/predictions"
+	"github.com/edd/relaxovisionmonolith/predictions/providers"
 	"github.com/edd/relaxovisionmonolith/websocket"
 	fiberws "github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
@@ -24,6 +27,8 @@ var (
 	footballService     *footballdata.Service
 	predictionsService  *predictions.Service
 	predictionsHandlers *predictions.Handlers
+	embeddingsService   *embeddings.Service
+	embeddingsHandlers  *embeddings.Handlers
 	wsHub               *websocket.Hub
 	wsHandler           *websocket.Handler
 )
@@ -90,6 +95,15 @@ func runServer() error {
 	server.Get("/api/predictions/:id", predictionsHandlers.GetPrediction)
 	server.Get("/api/predictions/match/:matchId", predictionsHandlers.GetMatchPredictions)
 
+	// Prediction accuracy endpoints
+	server.Get("/api/predictions/accuracy", predictionsHandlers.GetAccuracyStats)
+	server.Get("/api/predictions/accuracy/competition/:id", predictionsHandlers.GetCompetitionAccuracy)
+	server.Get("/api/predictions/leaderboard", predictionsHandlers.GetLeaderboard)
+
+	// Semantic search endpoints
+	server.Post("/api/search/teams", embeddingsHandlers.SearchTeams)
+	server.Get("/api/teams/:id/similar", embeddingsHandlers.FindSimilarTeams)
+
 	// WebSocket endpoint
 	server.Use("/ws", func(c *fiber.Ctx) error {
 		if fiberws.IsWebSocketUpgrade(c) {
@@ -117,14 +131,82 @@ func initServices() {
 		slog.Warn("OPENAI_API_KEY not set, using placeholder")
 	}
 
-	// Initialize football data service
+	claudeKey := os.Getenv("CLAUDE_API_KEY")
+	if claudeKey == "" {
+		claudeKey = "YOUR_CLAUDE_API_KEY_HERE"
+		slog.Warn("CLAUDE_API_KEY not set, using placeholder")
+	}
+
+	geminiKey := os.Getenv("GEMINI_API_KEY")
+	if geminiKey == "" {
+		geminiKey = "YOUR_GEMINI_API_KEY_HERE"
+		slog.Warn("GEMINI_API_KEY not set, using placeholder")
+	}
+
+	// Initialize cache (use memory cache for simplicity)
+	cacheConfig := cache.CacheConfig{
+		Type:    "memory",
+		MaxSize: 1000,
+	}
+	cacheImpl, err := cache.NewCache(cacheConfig)
+	if err != nil {
+		slog.Error("Failed to initialize cache, using memory cache", "error", err)
+		cacheImpl = cache.NewMemoryCache(1000)
+	}
+
+	// Initialize football data service with caching
 	footballClient := footballdata.NewClient(footballAPIKey)
+	cachedClient := footballdata.NewCachedClient(footballAPIKey, cacheImpl)
+	_ = cachedClient // Available for future use
 	footballRepo := footballdata.NewRepository(db)
 	footballService = footballdata.NewService(footballClient, footballRepo)
+
+	// Initialize LLM providers for predictions and embeddings
+	providerConfigs := []providers.ProviderConfig{
+		{
+			Name:    "openai",
+			APIKey:  openAIKey,
+			Model:   "gpt-4",
+			Enabled: openAIKey != "YOUR_OPENAI_API_KEY_HERE",
+			Weight:  1.0,
+		},
+		{
+			Name:    "claude",
+			APIKey:  claudeKey,
+			Model:   "claude-3-5-sonnet-20241022",
+			Enabled: false, // Disabled by default, can be enabled with valid key
+			Weight:  1.0,
+		},
+		{
+			Name:    "gemini",
+			APIKey:  geminiKey,
+			Model:   "gemini-1.5-pro",
+			Enabled: false, // Disabled by default, can be enabled with valid key
+			Weight:  1.0,
+		},
+	}
+
+	factory := providers.NewProviderFactory(providerConfigs)
+	llmProviders, err := factory.CreateProviders()
+	if err != nil {
+		slog.Error("Failed to create LLM providers", "error", err)
+		// Fallback to just OpenAI
+		llmProviders = []providers.LLMProvider{
+			providers.NewOpenAIProvider(openAIKey, "gpt-4"),
+		}
+	}
 
 	// Initialize predictions service
 	predictionsService = predictions.NewService(db, openAIKey)
 	predictionsHandlers = predictions.NewHandlers(predictionsService)
+
+	// Initialize embeddings service
+	embeddingsService = embeddings.NewService(db, llmProviders)
+	embeddingsHandlers = embeddings.NewHandlers(embeddingsService)
+
+	// Optional: Start embedding worker in background
+	// embeddingsWorker := embeddings.NewWorker(embeddingsService, db, footballService)
+	// go embeddingsWorker.Start(context.Background())
 
 	// Optional: Start background scheduler for football data sync
 	// Uncomment to enable automatic data synchronization
