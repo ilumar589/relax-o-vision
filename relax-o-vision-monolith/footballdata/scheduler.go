@@ -2,6 +2,7 @@ package footballdata
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 )
@@ -141,20 +142,41 @@ func (s *Scheduler) needsRefresh(ctx context.Context, entityType, entityKey stri
 
 // syncCompetition syncs a specific competition
 func (s *Scheduler) syncCompetition(ctx context.Context, code string) error {
-	// This would fetch and save competition data
-	// For now, we'll just update the metadata
-	if s.cacheManager != nil {
-		return s.cacheManager.SetMetadata(ctx, "competition", code, "")
+	// Fetch competition data from API
+	comp, err := s.service.GetClient().GetCompetition(ctx, code)
+	if err != nil {
+		return fmt.Errorf("failed to fetch competition: %w", err)
 	}
+
+	// Save to database
+	if err := s.service.GetRepository().SaveCompetition(ctx, comp); err != nil {
+		return fmt.Errorf("failed to save competition: %w", err)
+	}
+
+	// Update cache metadata
+	if s.cacheManager != nil {
+		dataHash := ComputeDataHash(comp)
+		return s.cacheManager.SetMetadata(ctx, "competition", code, dataHash)
+	}
+
 	return nil
 }
 
 // syncStandings syncs standings for a competition
 func (s *Scheduler) syncStandings(ctx context.Context, code string) error {
-	// This would fetch and save standings data
-	// For now, we'll just update the metadata
-	if s.cacheManager != nil {
-		return s.cacheManager.SetMetadata(ctx, "standings", code, "")
+	// Fetch standings data from API
+	standings, err := s.service.GetClient().GetStandings(ctx, code)
+	if err != nil {
+		return fmt.Errorf("failed to fetch standings: %w", err)
 	}
+
+	// Note: Standings are not persisted to a dedicated table currently.
+	// They can be cached in Redis for fast access.
+	// Update cache metadata
+	if s.cacheManager != nil {
+		dataHash := ComputeDataHash(standings)
+		return s.cacheManager.SetMetadata(ctx, "standings", code, dataHash)
+	}
+
 	return nil
 }

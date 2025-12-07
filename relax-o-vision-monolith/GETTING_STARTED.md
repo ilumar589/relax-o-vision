@@ -16,7 +16,7 @@ This guide will help you get the Relax-O-Vision application up and running on yo
 
 Before you begin, ensure you have the following installed on your system:
 
-- **Go 1.24+** - Download from [https://golang.org/dl/](https://golang.org/dl/)
+- **Go 1.25+** - Download from [https://golang.org/dl/](https://golang.org/dl/)
 - **Docker and Docker Compose** - Download from [https://www.docker.com/get-started](https://www.docker.com/get-started)
 - **Node.js/Bun** (for frontend assets) - Download from [https://bun.sh/](https://bun.sh/)
 - **Git** - Download from [https://git-scm.com/downloads](https://git-scm.com/downloads)

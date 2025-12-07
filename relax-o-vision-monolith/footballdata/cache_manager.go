@@ -7,15 +7,26 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/edd/relaxovisionmonolith/cache"
 )
 
-const (
-	// CacheTTL is the duration for which data is considered fresh (30 days)
-	CacheTTL = 30 * 24 * time.Hour
-)
+// GetCacheTTL returns the cache TTL from environment or default (30 days)
+func GetCacheTTL() time.Duration {
+	if ttlStr := os.Getenv("CACHE_TTL_DAYS"); ttlStr != "" {
+		if days, err := strconv.Atoi(ttlStr); err == nil && days > 0 {
+			return time.Duration(days) * 24 * time.Hour
+		}
+	}
+	// Default to 30 days
+	return 30 * 24 * time.Hour
+}
+
+// CacheTTL is the duration for which data is considered fresh
+var CacheTTL = GetCacheTTL()
 
 // CacheMetadata represents cache metadata for tracking freshness
 type CacheMetadata struct {
