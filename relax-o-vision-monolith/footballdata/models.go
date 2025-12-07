@@ -96,27 +96,30 @@ type Odds struct {
 }
 
 // StandingTable represents a league table
+type TeamStanding struct {
+	Position       int     `json:"position"`
+	Team           Team    `json:"team"`
+	PlayedGames    int     `json:"playedGames"`
+	Form           *string `json:"form"`
+	Won            int     `json:"won"`
+	Draw           int     `json:"draw"`
+	Lost           int     `json:"lost"`
+	Points         int     `json:"points"`
+	GoalsFor       int     `json:"goalsFor"`
+	GoalsAgainst   int     `json:"goalsAgainst"`
+	GoalDifference int     `json:"goalDifference"`
+}
+
+// StandingTable represents a league table
 type StandingTable struct {
 	Stage string          `json:"stage"`
 	Type  string          `json:"type"`
 	Group *string         `json:"group"`
-	Table []TablePosition `json:"table"`
+	Table []TeamStanding  `json:"table"`
 }
 
-// TablePosition represents a team's position in the table
-type TablePosition struct {
-	Position       int  `json:"position"`
-	Team           Team `json:"team"`
-	PlayedGames    int  `json:"playedGames"`
-	Form           *string `json:"form"`
-	Won            int  `json:"won"`
-	Draw           int  `json:"draw"`
-	Lost           int  `json:"lost"`
-	Points         int  `json:"points"`
-	GoalsFor       int  `json:"goalsFor"`
-	GoalsAgainst   int  `json:"goalsAgainst"`
-	GoalDifference int  `json:"goalDifference"`
-}
+// TablePosition is an alias for TeamStanding for backwards compatibility
+type TablePosition = TeamStanding
 
 // Standing represents competition standings
 type Standing struct {
