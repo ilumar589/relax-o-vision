@@ -30,11 +30,18 @@ func NewTestCompetition(id int, code, name string) *Competition {
 
 // NewTestTeam creates a test team
 func NewTestTeam(id int, name string) *Team {
+	shortName := name
+	tla := name
+	if len(name) >= 3 {
+		shortName = name[:3]
+		tla = name[:3]
+	}
+	
 	return &Team{
 		ID:         id,
 		Name:       name,
-		ShortName:  name[:3],
-		TLA:        name[:3],
+		ShortName:  shortName,
+		TLA:        tla,
 		Crest:      "https://example.com/crest.png",
 		Founded:    1900,
 		ClubColors: "Red / White",

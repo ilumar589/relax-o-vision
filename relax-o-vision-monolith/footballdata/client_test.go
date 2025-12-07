@@ -58,11 +58,8 @@ func TestClient_doRequest_RateLimiting(t *testing.T) {
 	t.Parallel()
 
 	client := NewClient("test-key")
-
-	// Make multiple requests and verify rate limiting
-	start := time.Now()
 	
-	// Since we can't easily test actual API calls, we test the timing logic
+	// Test the timing logic for rate limiting
 	client.mu.Lock()
 	client.lastRequest = time.Now()
 	lastReq := client.lastRequest
@@ -72,11 +69,10 @@ func TestClient_doRequest_RateLimiting(t *testing.T) {
 	elapsed := time.Since(lastReq)
 	expectedWait := (rateLimitDuration / requestsPerMinute) - elapsed
 	
-	if expectedWait > 0 && expectedWait < rateLimitDuration/requestsPerMinute {
-		// This is correct behavior
+	// Verify that wait time is calculated correctly
+	if expectedWait > 0 && expectedWait > rateLimitDuration/requestsPerMinute {
+		t.Errorf("expectedWait %v should not exceed rate limit duration", expectedWait)
 	}
-
-	_ = start
 }
 
 func TestClient_GetCompetitions_MockServer(t *testing.T) {
