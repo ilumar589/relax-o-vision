@@ -143,23 +143,42 @@ func initServices() {
 		slog.Warn("GEMINI_API_KEY not set, using placeholder")
 	}
 
-	// Initialize cache (use memory cache for simplicity)
-	cacheConfig := cache.CacheConfig{
-		Type:    "memory",
-		MaxSize: 1000,
-	}
-	cacheImpl, err := cache.NewCache(cacheConfig)
-	if err != nil {
-		slog.Error("Failed to initialize cache, using memory cache", "error", err)
+	// Initialize cache with Redis support
+	redisURL := os.Getenv("REDIS_URL")
+	var cacheImpl cache.Cache
+	var err error
+
+	if redisURL != "" {
+		// Try to use Redis cache
+		slog.Info("Initializing Redis cache", "url", redisURL)
+		cacheConfig := cache.CacheConfig{
+			Type:      "redis",
+			RedisAddr: redisURL,
+			RedisDB:   0,
+		}
+		cacheImpl, err = cache.NewCache(cacheConfig)
+		if err != nil {
+			slog.Warn("Failed to initialize Redis cache, falling back to memory cache", "error", err)
+			cacheImpl = cache.NewMemoryCache(1000)
+		} else {
+			slog.Info("Redis cache initialized successfully")
+		}
+	} else {
+		// Use memory cache as fallback
+		slog.Info("No REDIS_URL set, using memory cache")
 		cacheImpl = cache.NewMemoryCache(1000)
 	}
 
-	// Initialize football data service with caching
+	// Initialize football data service with caching and cache manager
 	footballClient := footballdata.NewClient(footballAPIKey)
 	cachedClient := footballdata.NewCachedClient(footballAPIKey, cacheImpl)
 	_ = cachedClient // Available for future use
 	footballRepo := footballdata.NewRepository(db)
 	footballService = footballdata.NewService(footballClient, footballRepo)
+
+	// Initialize cache manager for 30-day TTL caching
+	cacheManager := footballdata.NewCacheManager(cacheImpl, db)
+	_ = cacheManager // Available for scheduler and other services
 
 	// Initialize LLM providers for predictions and embeddings
 	providerConfigs := []providers.ProviderConfig{
@@ -209,10 +228,10 @@ func initServices() {
 	// go embeddingsWorker.Start(context.Background())
 
 	// Optional: Start background scheduler for football data sync
-	// Uncomment to enable automatic data synchronization
+	// Uncomment to enable automatic data synchronization with 30-day freshness checks
 	/*
 	competitionCodes := []string{"PL", "PD", "BL1"} // Premier League, La Liga, Bundesliga
-	scheduler := footballdata.NewScheduler(footballService, competitionCodes, 24*time.Hour)
+	scheduler := footballdata.NewScheduler(footballService, cacheManager, competitionCodes, 24*time.Hour)
 	go scheduler.Start(context.Background())
 	*/
 

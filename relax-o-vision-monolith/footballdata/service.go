@@ -87,3 +87,19 @@ func (s *Service) GetTeam(ctx context.Context, id int) (*Team, error) {
 func (s *Service) GetMatch(ctx context.Context, id int) (*Match, error) {
 	return s.repo.GetMatch(ctx, id)
 }
+
+// GetAllCompetitions fetches all competitions from the API
+func (s *Service) GetAllCompetitions(ctx context.Context) ([]Competition, error) {
+	slog.Info("Fetching all competitions from API")
+	return s.client.GetCompetitions(ctx)
+}
+
+// GetClient returns the API client (for scheduler use)
+func (s *Service) GetClient() *Client {
+	return s.client
+}
+
+// GetRepository returns the repository (for scheduler use)
+func (s *Service) GetRepository() *Repository {
+	return s.repo
+}

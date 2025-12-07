@@ -52,6 +52,8 @@ services:
     environment:
       BACKEND_PORT: 7000 # same as the exposed container port
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/relaxovision?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      GOEXPERIMENT: greenteagc,jsonv2
       FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY:-YOUR_FOOTBALL_DATA_API_KEY_HERE}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-YOUR_OPENAI_API_KEY_HERE}
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-YOUR_CLAUDE_API_KEY_HERE}
@@ -63,6 +65,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
 
 # Define volumes
 volumes:

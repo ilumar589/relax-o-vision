@@ -14,7 +14,9 @@ RUN go mod download
 COPY . .
 
 # Set necessary environment variables and build your project.
+# Enable experimental features: Green Tea GC and JSON v2
 ENV CGO_ENABLED=0
+ENV GOEXPERIMENT=greenteagc,jsonv2
 RUN go build -ldflags="-s -w" -o gowebly_fiber
 
 FROM scratch
