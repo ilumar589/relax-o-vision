@@ -55,3 +55,9 @@ lerna-debug.log*
 *.test
 *.tmp
 *.out
+
+# Build artifacts
+relaxovisionmonolith
+
+# Dapr secrets (should be configured per environment)
+dapr/secrets.json
