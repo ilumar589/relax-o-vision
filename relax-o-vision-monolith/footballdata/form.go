@@ -47,6 +47,7 @@ func (f *FormAnalyzer) AnalyzeTeamForm(ctx context.Context, teamID int) (*TeamFo
 	}
 
 	// Get last 5 matches (simplified - in real implementation would parse JSON)
+	// TODO: Implement actual form calculation from match history
 	// For now, return placeholder data
 	form.Last5Results = []string{"W", "D", "W", "L", "W"}
 	form.Last5GoalsFor = 8

@@ -98,6 +98,9 @@ func (h *Handler) handleClientMessage(client *Client, msg *WSMessage) {
 		var subMsg SubscribeMessage
 		if err := json.Unmarshal(msg.Payload, &subMsg); err != nil {
 			slog.Error("Failed to unmarshal subscribe message", "error", err)
+			// Send error to client
+			errMsg, _ := NewMessage(EventError, map[string]string{"error": "Invalid subscribe message format"})
+			client.Send <- errMsg
 			return
 		}
 		h.hub.Subscribe(client, subMsg.Room)
@@ -106,11 +109,17 @@ func (h *Handler) handleClientMessage(client *Client, msg *WSMessage) {
 		var unsubMsg UnsubscribeMessage
 		if err := json.Unmarshal(msg.Payload, &unsubMsg); err != nil {
 			slog.Error("Failed to unmarshal unsubscribe message", "error", err)
+			// Send error to client
+			errMsg, _ := NewMessage(EventError, map[string]string{"error": "Invalid unsubscribe message format"})
+			client.Send <- errMsg
 			return
 		}
 		h.hub.Unsubscribe(client, unsubMsg.Room)
 
 	default:
 		slog.Warn("Unknown message type received", "type", msg.Type)
+		// Send error to client
+		errMsg, _ := NewMessage(EventError, map[string]string{"error": "Unknown message type"})
+		client.Send <- errMsg
 	}
 }

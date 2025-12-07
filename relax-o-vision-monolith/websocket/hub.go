@@ -137,15 +137,19 @@ func (h *Hub) unregisterClient(client *Client) {
 // broadcastToAll sends a message to all connected clients
 func (h *Hub) broadcastToAll(message *WSMessage) {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
+	clients := make([]*Client, 0, len(h.clients))
 	for client := range h.clients {
+		clients = append(clients, client)
+	}
+	h.mu.RUnlock()
+
+	for _, client := range clients {
 		select {
 		case client.Send <- message:
 		default:
 			slog.Warn("Failed to send message to client", "clientId", client.ID)
-			close(client.Send)
-			delete(h.clients, client)
+			// Unregister client asynchronously
+			go h.Unregister(client)
 		}
 	}
 }

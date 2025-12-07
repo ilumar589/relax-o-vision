@@ -135,6 +135,8 @@ func (p *GeminiProvider) GenerateEmbedding(ctx context.Context, text string) ([]
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	// Note: Google's Gemini API uses API key in URL as per their official design
+	// This is the standard authentication method for their REST API
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=%s", p.apiKey)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(bodyBytes))
 	if err != nil {

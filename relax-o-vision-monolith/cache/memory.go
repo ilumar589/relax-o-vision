@@ -13,6 +13,7 @@ type MemoryCache struct {
 	items   map[string]*cacheItem
 	lru     *list.List
 	mu      sync.RWMutex
+	done    chan struct{}
 }
 
 type cacheItem struct {
@@ -32,6 +33,7 @@ func NewMemoryCache(maxSize int) *MemoryCache {
 		maxSize: maxSize,
 		items:   make(map[string]*cacheItem),
 		lru:     list.New(),
+		done:    make(chan struct{}),
 	}
 
 	// Start cleanup goroutine
@@ -153,15 +155,26 @@ func (c *MemoryCache) cleanupExpired() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		c.mu.Lock()
-		now := time.Now()
-		for key, item := range c.items {
-			if now.After(item.expiresAt) {
-				c.lru.Remove(item.element)
-				delete(c.items, key)
+	for {
+		select {
+		case <-c.done:
+			return
+		case <-ticker.C:
+			c.mu.Lock()
+			now := time.Now()
+			for key, item := range c.items {
+				if now.After(item.expiresAt) {
+					c.lru.Remove(item.element)
+					delete(c.items, key)
+				}
 			}
+			c.mu.Unlock()
 		}
-		c.mu.Unlock()
 	}
+}
+
+// Close stops the cleanup goroutine
+func (c *MemoryCache) Close() error {
+	close(c.done)
+	return nil
 }

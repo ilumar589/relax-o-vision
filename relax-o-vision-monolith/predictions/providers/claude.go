@@ -111,8 +111,7 @@ Provide your analysis in JSON format:
 
 // GenerateEmbedding generates an embedding using Claude's embeddings API
 func (p *ClaudeProvider) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	// Note: Claude doesn't have a native embeddings API as of now
-	// We'll return an error for now, but this could be implemented
-	// using Voyage AI or another embedding service in production
-	return nil, fmt.Errorf("claude does not support embeddings natively, use OpenAI or Gemini for embeddings")
+	// Claude does not have a native embeddings API as of now
+	// Configure OpenAI or Gemini providers for embedding generation instead
+	return nil, fmt.Errorf("claude provider does not support embeddings - configure OpenAI or Gemini providers for embedding generation")
 }
