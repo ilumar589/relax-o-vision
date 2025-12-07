@@ -31,6 +31,8 @@ services:
     restart: unless-stopped
     ports:
       - '6379:6379'
+    volumes:
+      - redis_data:/data
     networks:
       - gowebly_fiber_network
 
@@ -52,6 +54,8 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/relaxovision?sslmode=disable
       FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY:-YOUR_FOOTBALL_DATA_API_KEY_HERE}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-YOUR_OPENAI_API_KEY_HERE}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-YOUR_CLAUDE_API_KEY_HERE}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-YOUR_GEMINI_API_KEY_HERE}
     # Networks to join.
     # Services on the same network can communicate with each other using their name.
     networks:
@@ -63,6 +67,7 @@ services:
 # Define volumes
 volumes:
   postgres_data:
+  redis_data:
 
 # Define Docker networks.
 networks:

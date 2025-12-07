@@ -18,9 +18,10 @@ type Service struct {
 	formAgent         *FormAgent
 	headToHeadAgent   *HeadToHeadAgent
 	aggregatorAgent   *AggregatorAgent
+	openAIKey         string // Keep for backward compatibility
 }
 
-// NewService creates a new prediction service
+// NewService creates a new prediction service (legacy)
 func NewService(db *sql.DB, openAIKey string) *Service {
 	return &Service{
 		db:               db,
@@ -28,6 +29,7 @@ func NewService(db *sql.DB, openAIKey string) *Service {
 		formAgent:        NewFormAgent(openAIKey),
 		headToHeadAgent:  NewHeadToHeadAgent(openAIKey),
 		aggregatorAgent:  NewAggregatorAgent(openAIKey),
+		openAIKey:        openAIKey,
 	}
 }
 

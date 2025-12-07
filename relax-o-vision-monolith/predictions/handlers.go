@@ -8,12 +8,16 @@ import (
 
 // Handlers contains HTTP handlers for predictions
 type Handlers struct {
-	service *Service
+	service         *Service
+	accuracyService *AccuracyService
 }
 
 // NewHandlers creates a new handlers instance
 func NewHandlers(service *Service) *Handlers {
-	return &Handlers{service: service}
+	return &Handlers{
+		service:         service,
+		accuracyService: NewAccuracyService(service.db),
+	}
 }
 
 // CreatePrediction handles POST /api/predictions
@@ -80,5 +84,52 @@ func (h *Handlers) GetMatchPredictions(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"predictions": predictions,
 		"count":       len(predictions),
+	})
+}
+
+// GetAccuracyStats handles GET /api/predictions/accuracy
+func (h *Handlers) GetAccuracyStats(c *fiber.Ctx) error {
+	stats, err := h.accuracyService.GetOverallStats(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(stats)
+}
+
+// GetCompetitionAccuracy handles GET /api/predictions/accuracy/competition/:id
+func (h *Handlers) GetCompetitionAccuracy(c *fiber.Ctx) error {
+	compIDStr := c.Params("id")
+	compID, err := strconv.Atoi(compIDStr)
+	if err != nil || compID <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid competition ID",
+		})
+	}
+
+	stats, err := h.accuracyService.GetCompetitionStats(c.Context(), compID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(stats)
+}
+
+// GetLeaderboard handles GET /api/predictions/leaderboard
+func (h *Handlers) GetLeaderboard(c *fiber.Ctx) error {
+	leaderboard, err := h.accuracyService.GetLeaderboard(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"leaderboard": leaderboard,
+		"count":       len(leaderboard),
 	})
 }

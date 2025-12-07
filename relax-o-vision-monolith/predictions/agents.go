@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
+	"github.com/edd/relaxovisionmonolith/predictions/providers"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -16,17 +18,35 @@ const (
 	AgentTypeAggregator   = "aggregator"
 )
 
+// providerResult holds result from a single provider analysis
+type providerResult struct {
+	provider string
+	result   *providers.AnalysisResult
+	err      error
+}
+
 // Agent represents an AI agent for match prediction
 type Agent struct {
 	agentType string
 	client    *openai.Client
+	providers []providers.LLMProvider
+	weights   map[string]float64
 }
 
-// NewAgent creates a new AI agent
+// NewAgent creates a new AI agent with OpenAI (legacy compatibility)
 func NewAgent(agentType string, apiKey string) *Agent {
 	return &Agent{
 		agentType: agentType,
 		client:    openai.NewClient(apiKey),
+	}
+}
+
+// NewMultiProviderAgent creates a new agent with multiple LLM providers
+func NewMultiProviderAgent(agentType string, llmProviders []providers.LLMProvider, weights map[string]float64) *Agent {
+	return &Agent{
+		agentType: agentType,
+		providers: llmProviders,
+		weights:   weights,
 	}
 }
 
@@ -271,4 +291,106 @@ func parseAgentResponse(agentType, response string) (*AgentOutput, error) {
 		Reasoning:   output.Reasoning,
 		KeyFactors:  output.KeyFactors,
 	}, nil
+}
+
+// analyzeWithMultipleProviders runs analysis with multiple providers and aggregates results
+func (a *Agent) analyzeWithMultipleProviders(ctx context.Context, prompt string, analysis *MatchAnalysis) (*AgentOutput, error) {
+	if len(a.providers) == 0 {
+		return nil, fmt.Errorf("no providers configured")
+	}
+
+	results := make(chan providerResult, len(a.providers))
+
+	// Run all providers in parallel
+	for _, provider := range a.providers {
+		go func(p providers.LLMProvider) {
+			result, err := p.Analyze(ctx, prompt, analysis)
+			results <- providerResult{
+				provider: p.Name(),
+				result:   result,
+				err:      err,
+			}
+		}(provider)
+	}
+
+	// Collect results
+	var validResults []providerResult
+	for i := 0; i < len(a.providers); i++ {
+		res := <-results
+		if res.err != nil {
+			slog.Warn("Provider analysis failed", "provider", res.provider, "error", res.err)
+			continue
+		}
+		validResults = append(validResults, res)
+	}
+
+	if len(validResults) == 0 {
+		return nil, fmt.Errorf("all providers failed")
+	}
+
+	// Aggregate results with weights
+	return a.aggregateProviderResults(validResults), nil
+}
+
+// aggregateProviderResults aggregates results from multiple providers
+func (a *Agent) aggregateProviderResults(results []providerResult) *AgentOutput {
+	var homeWinProb, drawProb, awayWinProb, confidence float64
+	var reasonings []string
+	keyFactorsMap := make(map[string]int)
+
+	totalWeight := 0.0
+	for _, res := range results {
+		weight := 1.0
+		if a.weights != nil {
+			if w, ok := a.weights[res.provider]; ok {
+				weight = w
+			}
+		}
+		totalWeight += weight
+
+		homeWinProb += res.result.HomeWinProb * weight
+		drawProb += res.result.DrawProb * weight
+		awayWinProb += res.result.AwayWinProb * weight
+		confidence += res.result.Confidence * weight
+
+		reasonings = append(reasonings, fmt.Sprintf("[%s]: %s", res.provider, res.result.Reasoning))
+		for _, factor := range res.result.KeyFactors {
+			keyFactorsMap[factor]++
+		}
+	}
+
+	// Normalize by total weight
+	if totalWeight > 0 {
+		homeWinProb /= totalWeight
+		drawProb /= totalWeight
+		awayWinProb /= totalWeight
+		confidence /= totalWeight
+	}
+
+	// Select most common key factors
+	var keyFactors []string
+	for factor, count := range keyFactorsMap {
+		if count > len(results)/2 { // Include if more than half of providers mentioned it
+			keyFactors = append(keyFactors, factor)
+		}
+	}
+
+	// Combine reasonings
+	reasoning := ""
+	for i, r := range reasonings {
+		if i > 0 {
+			reasoning += "\n\n"
+		}
+		reasoning += r
+	}
+
+	return &AgentOutput{
+		AgentType:   a.agentType,
+		HomeWinProb: homeWinProb,
+		DrawProb:    drawProb,
+		AwayWinProb: awayWinProb,
+		Confidence:  confidence,
+		Reasoning:   reasoning,
+		KeyFactors:  keyFactors,
+	}
 }
