@@ -263,15 +263,14 @@ Improves garbage collection performance with lower latency and better memory man
 - Set automatically in Docker
 - Benefits: Reduced pause times, better throughput
 
-### JSON v2 (`encoding/json/v2`)
+### JSON v2 (`encoding/json`)
 
 Go 1.25 includes a new, experimental JSON implementation that provides significant improvements over the standard library.
 
 - Enabled with: `GOEXPERIMENT=jsonv2`
 - Set automatically in Docker
-- Available packages:
-  - `encoding/json/v2` - Major revision of encoding/json
-  - `encoding/json/jsontext` - Lower-level JSON syntax processing
+- Used via standard import: `encoding/json`
+- The `GOEXPERIMENT=jsonv2` flag enables the new JSON v2 functionality through the standard import path
 
 **Benefits:**
 - Better performance for JSON marshaling/unmarshaling
@@ -279,6 +278,16 @@ Go 1.25 includes a new, experimental JSON implementation that provides significa
 - Support for `omitzero` tag to omit zero values
 - Better handling of maps with non-string keys
 - Improved error messages
+
+**For local development:** When building locally, you must set the `GOEXPERIMENT=jsonv2` environment variable:
+
+```bash
+# Build with JSON v2 support
+GOEXPERIMENT=jsonv2 go build
+
+# Or run with JSON v2 support
+GOEXPERIMENT=jsonv2 go run .
+```
 
 The application uses both experimental features together: `GOEXPERIMENT=greenteagc,jsonv2`
 

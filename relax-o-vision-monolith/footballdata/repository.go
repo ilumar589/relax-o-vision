@@ -3,7 +3,7 @@ package footballdata
 import (
 	"context"
 	"database/sql"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"time"
 

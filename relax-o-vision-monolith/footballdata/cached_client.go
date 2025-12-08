@@ -2,7 +2,7 @@ package footballdata
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
