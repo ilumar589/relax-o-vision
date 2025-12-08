@@ -186,7 +186,7 @@ func initServices() {
 			Name:    "openai",
 			APIKey:  openAIKey,
 			Model:   "gpt-4",
-			Enabled: openAIKey != "YOUR_OPENAI_API_KEY_HERE",
+			Enabled: true,
 			Weight:  1.0,
 		},
 		{
@@ -230,9 +230,9 @@ func initServices() {
 	// Optional: Start background scheduler for football data sync
 	// Uncomment to enable automatic data synchronization with 30-day freshness checks
 	/*
-	competitionCodes := []string{"PL", "PD", "BL1"} // Premier League, La Liga, Bundesliga
-	scheduler := footballdata.NewScheduler(footballService, cacheManager, competitionCodes, 24*time.Hour)
-	go scheduler.Start(context.Background())
+		competitionCodes := []string{"PL", "PD", "BL1"} // Premier League, La Liga, Bundesliga
+		scheduler := footballdata.NewScheduler(footballService, cacheManager, competitionCodes, 24*time.Hour)
+		go scheduler.Start(context.Background())
 	*/
 
 	slog.Info("Services initialized successfully")

@@ -18,12 +18,12 @@ type Cache interface {
 // CacheConfig holds cache configuration
 type CacheConfig struct {
 	Type string // "redis" or "memory"
-	
+
 	// Redis config
 	RedisAddr     string
 	RedisPassword string
 	RedisDB       int
-	
+
 	// Memory config
 	MaxSize int // Maximum number of items in memory cache
 }
@@ -34,8 +34,8 @@ func NewCache(config CacheConfig) (Cache, error) {
 	case "redis":
 		// Parse Redis URL if it starts with redis://
 		addr := config.RedisAddr
-		if strings.HasPrefix(addr, "redis://") {
-			addr = strings.TrimPrefix(addr, "redis://")
+		if after, ok := strings.CutPrefix(addr, "redis://"); ok {
+			addr = after
 		}
 		return NewRedisCache(addr, config.RedisPassword, config.RedisDB)
 	case "memory":

@@ -162,21 +162,23 @@ func (h *H2HAnalyzer) AnalyzeHeadToHead(ctx context.Context, team1ID, team2ID in
 		if homeTeamID == team1ID {
 			h2h.Team1Goals += homeScore
 			h2h.Team2Goals += awayScore
-			if winner == "home" {
+			switch winner {
+			case "home":
 				h2h.Team1Wins++
-			} else if winner == "away" {
+			case "away":
 				h2h.Team2Wins++
-			} else {
+			default:
 				h2h.Draws++
 			}
 		} else {
 			h2h.Team1Goals += awayScore
 			h2h.Team2Goals += homeScore
-			if winner == "away" {
+			switch winner {
+			case "away":
 				h2h.Team1Wins++
-			} else if winner == "home" {
+			case "home":
 				h2h.Team2Wins++
-			} else {
+			default:
 				h2h.Draws++
 			}
 		}
