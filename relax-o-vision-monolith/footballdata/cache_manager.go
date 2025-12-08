@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
